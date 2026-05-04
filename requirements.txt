@@ -1,0 +1,5 @@
+streamlit>=1.33
+python-dotenv>=1.0
+langgraph>=0.2
+langchain-core>=0.2
+langchain-ollama>=0.1
