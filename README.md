@@ -16,6 +16,10 @@ Small demo project showing how to:
   - Stores chat messages in `st.session_state["message_history"]`.
   - On each user message, calls `chatbot.invoke({"messages": [HumanMessage(...)]}, config=CONFIG)`.
 
+- `streamlit_frontend_thread.py`
+  - **Frontend UI (threaded conversations)**: Streamlit chat app with a sidebar to switch between conversations.
+  - Uses `thread_id` and `chatbot.get_state(...)` / `chatbot.stream(...)` to load and continue different threads.
+
 - `basic_chatbot.ipynb`
   - Notebook version of the basic LangGraph chatbot call.
 
@@ -60,6 +64,12 @@ ollama pull llama3
 streamlit run .\streamlit_frontend.py
 ```
 
+Run the thread-based UI:
+
+```powershell
+streamlit run .\streamlit_frontend_thread.py
+```
+
 Open in your browser:
 
 - http://localhost:8501
@@ -68,3 +78,7 @@ Open in your browser:
 
 - Do **not** commit `.venv/` or `myenv/` to GitHub (they are ignored by `.gitignore`).
 - If Streamlit shows Ollama connection errors, start Ollama and retry.
+
+## 2026-05-06 updates
+
+- Fixed Streamlit threaded UI import to use `langgraph_backend.py` (previously referenced a non-existent module name).
