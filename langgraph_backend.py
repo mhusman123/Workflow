@@ -13,8 +13,21 @@ from langgraph.graph.message import add_messages
 load_dotenv()
 
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+def get_setting(name: str, default: str | None = None) -> str | None:
+    value = os.getenv(name)
+    if value:
+        return value
+
+    try:
+        import streamlit as st
+
+        return st.secrets.get(name, default)
+    except Exception:
+        return default
+
+
+GROQ_MODEL = get_setting("GROQ_MODEL") or "llama-3.3-70b-versatile"
+GROQ_API_KEY = get_setting("GROQ_API_KEY")
 
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is required to run this application")
