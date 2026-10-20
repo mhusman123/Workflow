@@ -26,7 +26,11 @@ def get_setting(name: str, default: str | None = None) -> str | None:
         return default
 
 
-GROQ_MODEL = get_setting("GROQ_MODEL") or "llama-3.3-70b-versatile"
+configured_model = get_setting("GROQ_MODEL")
+if configured_model in (None, "llama-3.3-70b-versatile"):
+    GROQ_MODEL = "llama-3.1-8b-instant"
+else:
+    GROQ_MODEL = configured_model
 GROQ_API_KEY = get_setting("GROQ_API_KEY")
 
 if not GROQ_API_KEY:
