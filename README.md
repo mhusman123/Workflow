@@ -1,14 +1,14 @@
-﻿# Cortex AI — Conversational Agent with LangGraph & Ollama
+﻿# Cortex AI — Conversational Agent with LangGraph & Groq
 
 <p align="center">
   <img src="https://img.shields.io/badge/LangGraph-0.2+-blue?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/Streamlit-1.33+-red?logo=streamlit&logoColor=white" />
-  <img src="https://img.shields.io/badge/Ollama-llama3-green?logo=ollama&logoColor=white" />
+  <img src="https://img.shields.io/badge/Groq-API-orange?logo=groq&logoColor=white" />
   <img src="https://img.shields.io/badge/Python-3.10+-yellow?logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/License-MIT-lightgrey" />
 </p>
 
-> **Cortex** is a locally-running, multi-turn conversational AI agent built with [LangGraph](https://langchain-ai.github.io/langgraph/) and served via a ChatGPT-style [Streamlit](https://streamlit.io) frontend. It uses [Ollama](https://ollama.com) to run open-source LLMs entirely on your machine — no API keys, no cloud calls.
+> **Cortex** is a multi-turn conversational AI agent built with [LangGraph](https://langchain-ai.github.io/langgraph/) and served through a ChatGPT-style [Streamlit](https://streamlit.io) frontend. It uses the [Groq API](https://groq.com/) for fast hosted LLM inference.
 
 
 ---
@@ -35,7 +35,7 @@ The project will grow from this core into a collection of focused implementation
 
 - **LangGraph** for explicit state, nodes, edges, graph execution, and checkpointing
 - **LangChain Core** for message types and model interaction contracts
-- **Ollama** for local open-source LLM inference through `ChatOllama`
+- **Groq** for hosted LLM inference through `ChatGroq`
 - **Streamlit** for the interactive chat application and streamed responses
 - **Python** and `python-dotenv` for the application runtime and configuration
 - **InMemorySaver** for thread-scoped conversation checkpoints during development
@@ -87,9 +87,9 @@ User (Browser)
                   │  llm.invoke(messages)
                   ▼
 ┌─────────────────────────────────────────────┐
-│          Ollama (local LLM runtime)          │
-│   Model: llama3 (configurable via .env)      │
-│   Runs on: localhost:11434                   │
+│             Groq API                         │
+│   Model: llama-3.3-70b-versatile             │
+│   API key: GROQ_API_KEY                      │
 └─────────────────────────────────────────────┘
 ```
 
@@ -97,7 +97,7 @@ User (Browser)
 
 1. User types a message → `streamlit_frontend_thread.py` appends it to `session_state["message_history"]`
 2. A `HumanMessage` is sent to `chatbot.stream()` with the current `thread_id` as config
-3. LangGraph routes through `chat_node` → Ollama LLM → returns `AIMessage`
+3. LangGraph routes through `chat_node` → Groq LLM → returns `AIMessage`
 4. Tokens stream back to the UI via `st.write_stream()`
 5. The full response is stored in session state and LangGraph's checkpointer for memory persistence
 
@@ -113,7 +113,7 @@ Agent-using-LangGraph/
 ├── basic_chatbot.ipynb           # Jupyter notebook: basic chatbot exploration
 ├── simple_llm_workflow.ipynb     # Jupyter notebook: simple LLM workflow demo
 ├── requirements.txt              # Python dependencies
-├── .env                          # Environment config (OLLAMA_MODEL=llama3)
+├── .env                          # Local secrets (GROQ_API_KEY, GROQ_MODEL)
 ├── .gitignore                    # Git ignore rules
 └── README.md                     # This file
 ```
@@ -126,9 +126,9 @@ Agent-using-LangGraph/
 |---|---|---|---|
 | **Agent Orchestration** | LangGraph | `>=0.2` | [langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph/) |
 | **LLM Framework** | LangChain Core | `>=0.2` | [python.langchain.com](https://python.langchain.com/) |
-| **Local LLM Runtime** | Ollama | latest | [ollama.com](https://ollama.com/) |
-| **LLM Model** | llama3 (Meta) | 8B | [ollama.com/library/llama3](https://ollama.com/library/llama3) |
-| **Ollama Integration** | langchain-ollama | `>=0.1` | [pypi: langchain-ollama](https://pypi.org/project/langchain-ollama/) |
+| **LLM Provider** | Groq API | hosted | [groq.com](https://groq.com/) |
+| **LLM Model** | llama-3.3-70b-versatile | configurable | [Groq Models](https://console.groq.com/docs/models) |
+| **Groq Integration** | langchain-groq | `>=0.2` | [PyPI: langchain-groq](https://pypi.org/project/langchain-groq/) |
 | **Frontend** | Streamlit | `>=1.33` | [streamlit.io](https://streamlit.io/) |
 | **Env Config** | python-dotenv | `>=1.0` | [pypi: python-dotenv](https://pypi.org/project/python-dotenv/) |
 
@@ -139,12 +139,7 @@ Agent-using-LangGraph/
 ### Prerequisites
 
 - Python 3.10+
-- [Ollama](https://ollama.com/download) installed and running
-- `llama3` model pulled locally
-
-```bash
-ollama pull llama3
-```
+- A Groq account and API key from the [Groq Console](https://console.groq.com/keys)
 
 ### Installation
 
@@ -161,8 +156,9 @@ python -m venv .venv
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure your model (optional — defaults to llama3)
-echo OLLAMA_MODEL=llama3 > .env
+# 4. Configure Groq locally. Keep this file private and never commit it.
+GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
 ### Run
@@ -179,16 +175,20 @@ Open your browser at **http://localhost:8501**
 
 | Variable | Default | Description |
 |---|---|---|
-| `OLLAMA_MODEL` | `llama3` | Any model available in your local Ollama install |
+| `GROQ_API_KEY` | required | Groq API key; use Streamlit Secrets when deployed |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Any supported Groq chat model |
 
-Swap the model anytime in `.env`:
+Swap the model anytime in `.env` or Streamlit Secrets:
 
 ```env
-OLLAMA_MODEL=mistral
-# or
-OLLAMA_MODEL=gemma3:4b
-# or
-OLLAMA_MODEL=phi4-mini
+GROQ_MODEL=llama-3.1-8b-instant
+```
+
+For Streamlit Community Cloud, add the following under **Settings > Secrets**:
+
+```toml
+GROQ_API_KEY = "your-groq-api-key"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 ```
 
 ---
@@ -268,7 +268,7 @@ This project is the **foundation layer** of a fully-featured AI agent platform. 
 - 📘 [LangGraph Quickstart](https://langchain-ai.github.io/langgraph/tutorials/introduction/)
 - 📘 [LangGraph How-To Guides](https://langchain-ai.github.io/langgraph/how-tos/)
 - 📘 [LangChain Expression Language (LCEL)](https://python.langchain.com/docs/expression_language/)
-- 📘 [Ollama Model Library](https://ollama.com/library)
+- 📘 [Groq API Documentation](https://console.groq.com/docs)
 - 📘 [Streamlit API Reference](https://docs.streamlit.io/library/api-reference)
 - 📘 [LangSmith Observability](https://docs.smith.langchain.com/)
 - 📘 [Model Context Protocol](https://modelcontextprotocol.io/introduction)
@@ -281,4 +281,4 @@ MIT © [mhusman123](https://github.com/mhusman123)
 
 ---
 
-<p align="center">Built with ❤️ using <a href="https://langchain-ai.github.io/langgraph/">LangGraph</a> · <a href="https://streamlit.io">Streamlit</a> · <a href="https://ollama.com">Ollama</a></p>
+<p align="center">Built with ❤️ using <a href="https://langchain-ai.github.io/langgraph/">LangGraph</a> · <a href="https://streamlit.io">Streamlit</a> · <a href="https://groq.com/">Groq</a></p>
