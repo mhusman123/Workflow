@@ -1,84 +1,284 @@
-# Agentis using LangGraph (Ollama + Streamlit)
+﻿# Cortex AI — Conversational Agent with LangGraph & Ollama
 
-Small demo project showing how to:
-- build a minimal LangGraph chatbot backend using `langchain-ollama`, and
-- run an interactive Streamlit chat UI that calls the compiled graph.
+<p align="center">
+  <img src="https://img.shields.io/badge/LangGraph-0.2+-blue?logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Streamlit-1.33+-red?logo=streamlit&logoColor=white" />
+  <img src="https://img.shields.io/badge/Ollama-llama3-green?logo=ollama&logoColor=white" />
+  <img src="https://img.shields.io/badge/Python-3.10+-yellow?logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/License-MIT-lightgrey" />
+</p>
 
-## Files
+> **Cortex** is a locally-running, multi-turn conversational AI agent built with [LangGraph](https://langchain-ai.github.io/langgraph/) and served via a ChatGPT-style [Streamlit](https://streamlit.io) frontend. It uses [Ollama](https://ollama.com) to run open-source LLMs entirely on your machine — no API keys, no cloud calls.
 
-- `langgraph_backend.py`
-  - **Backend graph**: defines `ChatState`, a `chat_node`, and compiles the LangGraph into `chatbot`.
-  - Uses `InMemorySaver` with a `thread_id` (passed from the frontend) so your conversation can be checkpointed per thread.
-  - Uses Ollama via `ChatOllama(model="llama3")`.
 
-- `streamlit_frontend.py`
-  - **Frontend UI**: Streamlit chat app.
-  - Stores chat messages in `st.session_state["message_history"]`.
-  - On each user message, calls `chatbot.invoke({"messages": [HumanMessage(...)]}, config=CONFIG)`.
+---
 
-- `streamlit_frontend_thread.py`
-  - **Frontend UI (threaded conversations)**: Streamlit chat app with a sidebar to switch between conversations.
-  - Uses `thread_id` and `chatbot.get_state(...)` / `chatbot.stream(...)` to load and continue different threads.
+## ✨ Features
 
-- `basic_chatbot.ipynb`
-  - Notebook version of the basic LangGraph chatbot call.
+- 🧠 **Stateful multi-turn memory** — conversations persist across messages using LangGraph's `InMemorySaver` checkpointer
+- 💬 **Multi-session support** — create, rename, delete, and switch between multiple chat threads
+- ⚡ **Streaming responses** — tokens stream in real-time via `chatbot.stream()`
+- 🎨 **ChatGPT-style UI** — dark sidebar, hero landing, suggestion cards, and clean chat feed
+- 🔒 **Fully local** — runs 100% on your machine, zero data sent to the cloud
+- 🖥️ **Responsive** — desktop hover-controls + mobile long-press (650ms) for chat actions
 
-- `simple_llm_workflow.ipynb`
-  - Another notebook experimenting with a simple LLM workflow.
+---
 
-- `test.ipynb`
-  - Misc notebook for quick tests.
 
-## Requirements
+## Project Vision
 
-Python 3.10+.
+This repository is a practical, progressively expanding guide to building Agentic AI systems with LangGraph. The current implementation is the foundation: a stateful conversational agent with a Streamlit interface, local model execution, graph-based orchestration, streaming responses, and per-thread memory.
 
-This project uses **Ollama**. You must have Ollama installed and running locally.
+The project will grow from this core into a collection of focused implementations covering the major patterns used in production agent systems. Each addition will remain runnable, explainable, and connected to the LangGraph concepts it demonstrates.
 
-## Setup (Windows / PowerShell)
+## What We Use Today
 
-Create and activate a venv (recommended):
+- **LangGraph** for explicit state, nodes, edges, graph execution, and checkpointing
+- **LangChain Core** for message types and model interaction contracts
+- **Ollama** for local open-source LLM inference through `ChatOllama`
+- **Streamlit** for the interactive chat application and streamed responses
+- **Python** and `python-dotenv` for the application runtime and configuration
+- **InMemorySaver** for thread-scoped conversation checkpoints during development
 
-```powershell
-cd F:\Wrokflows
-python -m venv .venv
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-\.\.venv\Scripts\Activate.ps1
+## Agentic AI Topics Covered and Planned
+
+The repository is intended to cover the full LangGraph Agentic AI workflow, from fundamentals to production concerns.
+
+| Area | Status | Planned implementation |
+|---|---|---|
+| Graph fundamentals | In progress | State schemas, nodes, edges, entry points, and graph execution |
+| Stateful conversations | Current | Multi-turn messages, thread IDs, streaming, and checkpoints |
+| Tool calling | Planned | Structured tools, tool nodes, routing, and tool-result handling |
+| ReAct agents | Planned | Reasoning and action loops with bounded execution |
+| Human-in-the-loop | Planned | Interrupts, approvals, review steps, and resumable runs |
+| Memory and persistence | Planned | Long-term memory, SQLite/Postgres checkpointers, and recovery |
+| RAG agents | Planned | Ingestion, retrieval, grounded responses, and corrective retrieval |
+| Multi-agent systems | Planned | Supervisor, handoff, collaboration, and specialist graphs |
+| MCP integration | Planned | External tools and data sources through Model Context Protocol |
+| Structured output | Planned | Schemas, validation, retries, and reliable agent responses |
+| Observability and evaluation | Planned | LangSmith traces, datasets, evaluations, latency, and cost tracking |
+
+## 🏗️ Architecture
+
+```
+User (Browser)
+      │
+      ▼
+┌─────────────────────────────────────────────┐
+│          Streamlit Frontend                  │
+│   streamlit_frontend_thread.py               │
+│                                              │
+│  • Session state management (threads)        │
+│  • Streaming UI via st.write_stream()        │
+│  • Sidebar: New Chat / Rename / Delete       │
+│  • Hero landing + suggestion cards           │
+└─────────────────┬───────────────────────────┘
+                  │  chatbot.stream()
+                  ▼
+┌─────────────────────────────────────────────┐
+│          LangGraph Backend                   │
+│   langgraph_backend.py                       │
+│                                              │
+│  StateGraph(ChatState)                       │
+│    START → chat_node → END                   │
+│                                              │
+│  InMemorySaver (per thread_id checkpoint)    │
+└─────────────────┬───────────────────────────┘
+                  │  llm.invoke(messages)
+                  ▼
+┌─────────────────────────────────────────────┐
+│          Ollama (local LLM runtime)          │
+│   Model: llama3 (configurable via .env)      │
+│   Runs on: localhost:11434                   │
+└─────────────────────────────────────────────┘
 ```
 
-Install Python dependencies:
+### Data Flow
 
-```powershell
-pip install -r requirements.txt
+1. User types a message → `streamlit_frontend_thread.py` appends it to `session_state["message_history"]`
+2. A `HumanMessage` is sent to `chatbot.stream()` with the current `thread_id` as config
+3. LangGraph routes through `chat_node` → Ollama LLM → returns `AIMessage`
+4. Tokens stream back to the UI via `st.write_stream()`
+5. The full response is stored in session state and LangGraph's checkpointer for memory persistence
+
+---
+
+## 📁 Folder Structure
+
+```
+Agent-using-LangGraph/
+├── langgraph_backend.py          # LangGraph graph definition, LLM, checkpointer
+├── streamlit_frontend_thread.py  # Main Streamlit UI (multi-thread chatbot)
+├── streamlit_frontend.py         # (Legacy) single-session frontend
+├── basic_chatbot.ipynb           # Jupyter notebook: basic chatbot exploration
+├── simple_llm_workflow.ipynb     # Jupyter notebook: simple LLM workflow demo
+├── requirements.txt              # Python dependencies
+├── .env                          # Environment config (OLLAMA_MODEL=llama3)
+├── .gitignore                    # Git ignore rules
+└── README.md                     # This file
 ```
 
-Ensure Ollama is running and the model is available:
+---
 
-```powershell
+## 🧱 Tech Stack
+
+| Layer | Technology | Version | Link |
+|---|---|---|---|
+| **Agent Orchestration** | LangGraph | `>=0.2` | [langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph/) |
+| **LLM Framework** | LangChain Core | `>=0.2` | [python.langchain.com](https://python.langchain.com/) |
+| **Local LLM Runtime** | Ollama | latest | [ollama.com](https://ollama.com/) |
+| **LLM Model** | llama3 (Meta) | 8B | [ollama.com/library/llama3](https://ollama.com/library/llama3) |
+| **Ollama Integration** | langchain-ollama | `>=0.1` | [pypi: langchain-ollama](https://pypi.org/project/langchain-ollama/) |
+| **Frontend** | Streamlit | `>=1.33` | [streamlit.io](https://streamlit.io/) |
+| **Env Config** | python-dotenv | `>=1.0` | [pypi: python-dotenv](https://pypi.org/project/python-dotenv/) |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.10+
+- [Ollama](https://ollama.com/download) installed and running
+- `llama3` model pulled locally
+
+```bash
 ollama pull llama3
 ```
 
-## Run the app
+### Installation
 
-```powershell
-streamlit run .\streamlit_frontend.py
+```bash
+# 1. Clone the repo
+git clone https://github.com/mhusman123/Agent-using-LangGraph.git
+cd Agent-using-LangGraph
+
+# 2. Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS/Linux
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure your model (optional — defaults to llama3)
+echo OLLAMA_MODEL=llama3 > .env
 ```
 
-Run the thread-based UI:
+### Run
 
-```powershell
-streamlit run .\streamlit_frontend_thread.py
+```bash
+streamlit run streamlit_frontend_thread.py
 ```
 
-Open in your browser:
+Open your browser at **http://localhost:8501**
 
-- http://localhost:8501
+---
 
-## Notes
+## ⚙️ Configuration
 
-- Do **not** commit `.venv/` or `myenv/` to GitHub (they are ignored by `.gitignore`).
-- If Streamlit shows Ollama connection errors, start Ollama and retry.
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_MODEL` | `llama3` | Any model available in your local Ollama install |
 
-## 2026-05-06 updates
+Swap the model anytime in `.env`:
 
-- Fixed Streamlit threaded UI import to use `langgraph_backend.py` (previously referenced a non-existent module name).
+```env
+OLLAMA_MODEL=mistral
+# or
+OLLAMA_MODEL=gemma3:4b
+# or
+OLLAMA_MODEL=phi4-mini
+```
+
+---
+
+## 🔬 LangGraph Graph Structure
+
+```python
+# langgraph_backend.py
+
+class ChatState(TypedDict):
+    messages: Annotated[list[BaseMessage], add_messages]
+
+def chat_node(state: ChatState) -> dict:
+    response = llm.invoke(state["messages"])
+    return {"messages": [response]}
+
+graph = StateGraph(ChatState)
+graph.add_node("chat_node", chat_node)
+graph.add_edge(START, "chat_node")
+graph.add_edge("chat_node", END)
+
+chatbot = graph.compile(checkpointer=InMemorySaver())
+```
+
+Each conversation thread gets its own **checkpoint** identified by `thread_id`, giving full per-session memory without any database.
+
+---
+
+## 🗺️ Roadmap — What We Are Building Next
+
+This project is the **foundation layer** of a fully-featured AI agent platform. Here is what is coming:
+
+### 🔭 Observability — LangSmith Tracing
+- Integrate [LangSmith](https://smith.langchain.com/) for full trace visibility: every LLM call, node execution, latency, and token count — all in one dashboard
+- Enable `LANGCHAIN_TRACING_V2=true` for automatic graph tracing
+- Docs: [docs.smith.langchain.com](https://docs.smith.langchain.com/)
+
+### 🤝 Human-in-the-Loop (HITL)
+- Use LangGraph's [`interrupt()`](https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/) to pause graph execution and request human approval before sensitive steps
+- Build approval flows: tool calls, code execution, data writes
+- Docs: [Human-in-the-loop guide](https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/)
+
+### 🔌 MCP Client (Model Context Protocol)
+- Connect to external tools and data sources via [MCP](https://modelcontextprotocol.io/) clients
+- Plug in filesystem access, browser control, API clients, and more — all as LangGraph tool nodes
+- Docs: [modelcontextprotocol.io](https://modelcontextprotocol.io/introduction)
+
+### 📚 RAG — Retrieval-Augmented Generation
+- Add a vector store (e.g., [Chroma](https://www.trychroma.com/), [FAISS](https://faiss.ai/)) to give the agent long-term knowledge
+- Use [LangChain document loaders](https://python.langchain.com/docs/integrations/document_loaders/) to ingest PDFs, web pages, and code files
+- Docs: [RAG with LangGraph](https://langchain-ai.github.io/langgraph/tutorials/rag/langgraph_agentic_rag/)
+
+### 🗄️ SQLite Persistence
+- Replace `InMemorySaver` with [LangGraph's SQLite checkpointer](https://langchain-ai.github.io/langgraph/reference/checkpoints/#langgraph.checkpoint.sqlite.SqliteSaver) for durable, cross-session memory
+- Store chat history, thread metadata, and user preferences in a local SQLite database
+- Docs: [Persistence in LangGraph](https://langchain-ai.github.io/langgraph/concepts/persistence/)
+
+### 🕵️ Research Agent
+- Build a multi-step autonomous research agent using [LangGraph ReAct](https://langchain-ai.github.io/langgraph/how-tos/create-react-agent/) pattern
+- Tools: web search, document reader, summarizer, citation generator
+- Streaming thought-chain visibility in the UI
+
+### 🛠️ Tool Use and Function Calling
+- Bind custom Python functions as tools using `llm.bind_tools()`
+- Add tools: web search, calculator, code interpreter, file reader
+- Docs: [Tool calling in LangChain](https://python.langchain.com/docs/concepts/tool_calling/)
+
+### 👤 Auth and Multi-User Support
+- User authentication with [Streamlit-Authenticator](https://github.com/mkhorasani/Streamlit-Authenticator)
+- Per-user thread isolation and history
+
+---
+
+## 📖 Key References
+
+- 📘 [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
+- 📘 [LangGraph Quickstart](https://langchain-ai.github.io/langgraph/tutorials/introduction/)
+- 📘 [LangGraph How-To Guides](https://langchain-ai.github.io/langgraph/how-tos/)
+- 📘 [LangChain Expression Language (LCEL)](https://python.langchain.com/docs/expression_language/)
+- 📘 [Ollama Model Library](https://ollama.com/library)
+- 📘 [Streamlit API Reference](https://docs.streamlit.io/library/api-reference)
+- 📘 [LangSmith Observability](https://docs.smith.langchain.com/)
+- 📘 [Model Context Protocol](https://modelcontextprotocol.io/introduction)
+
+---
+
+## 📄 License
+
+MIT © [mhusman123](https://github.com/mhusman123)
+
+---
+
+<p align="center">Built with ❤️ using <a href="https://langchain-ai.github.io/langgraph/">LangGraph</a> · <a href="https://streamlit.io">Streamlit</a> · <a href="https://ollama.com">Ollama</a></p>
