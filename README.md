@@ -88,7 +88,7 @@ User (Browser)
                   ▼
 ┌─────────────────────────────────────────────┐
 │             Groq API                         │
-│   Model: llama-3.1-8b-instant                │
+│   Model: openai/gpt-oss-20b                  │
 │   API key: GROQ_API_KEY                      │
 └─────────────────────────────────────────────┘
 ```
@@ -127,7 +127,7 @@ Agent-using-LangGraph/
 | **Agent Orchestration** | LangGraph | `>=0.2` | [langchain-ai.github.io/langgraph](https://langchain-ai.github.io/langgraph/) |
 | **LLM Framework** | LangChain Core | `>=0.2` | [python.langchain.com](https://python.langchain.com/) |
 | **LLM Provider** | Groq API | hosted | [groq.com](https://groq.com/) |
-| **LLM Model** | llama-3.1-8b-instant | configurable | [Groq Models](https://console.groq.com/docs/models) |
+| **LLM Model** | openai/gpt-oss-20b | configurable | [Groq Models](https://console.groq.com/docs/models) |
 | **Groq Integration** | langchain-groq | `>=0.2` | [PyPI: langchain-groq](https://pypi.org/project/langchain-groq/) |
 | **Frontend** | Streamlit | `>=1.33` | [streamlit.io](https://streamlit.io/) |
 | **Env Config** | python-dotenv | `>=1.0` | [pypi: python-dotenv](https://pypi.org/project/python-dotenv/) |
@@ -158,7 +158,7 @@ pip install -r requirements.txt
 
 # 4. Configure Groq locally. Keep this file private and never commit it.
 GROQ_API_KEY=your-groq-api-key
-GROQ_MODEL=llama-3.1-8b-instant
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 ### Run
@@ -176,19 +176,19 @@ Open your browser at **http://localhost:8501**
 | Variable | Default | Description |
 |---|---|---|
 | `GROQ_API_KEY` | required | Groq API key; use Streamlit Secrets when deployed |
-| `GROQ_MODEL` | `llama-3.1-8b-instant` | Any supported Groq chat model |
+| `GROQ_MODEL` | `openai/gpt-oss-20b` | Any supported Groq chat model |
 
 Swap the model anytime in `.env` or Streamlit Secrets:
 
 ```env
-GROQ_MODEL=llama-3.1-8b-instant
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
 For Streamlit Community Cloud, add the following under **Settings > Secrets**:
 
 ```toml
 GROQ_API_KEY = "your-groq-api-key"
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = "openai/gpt-oss-20b"
 ```
 
 ---
