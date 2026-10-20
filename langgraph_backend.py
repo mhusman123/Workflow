@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Annotated, TypedDict
 
 from dotenv import load_dotenv
@@ -12,7 +13,9 @@ from langgraph.graph.message import add_messages
 load_dotenv()
 
 
-llm = ChatOllama(model="llama3")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+
+llm = ChatOllama(model=OLLAMA_MODEL)
 
 
 class ChatState(TypedDict):
