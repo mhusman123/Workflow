@@ -34,4 +34,7 @@ if not GROQ_API_KEY:
 
 
 def create_groq_llm(**kwargs: Any) -> ChatGroq:
-    return ChatGroq(model=GROQ_MODEL, api_key=GROQ_API_KEY, **kwargs)
+    model = kwargs.pop("model", GROQ_MODEL)
+    api_key = kwargs.pop("api_key", GROQ_API_KEY)
+    kwargs.setdefault("max_tokens", int(os.getenv("GROQ_MAX_TOKENS", "600")))
+    return ChatGroq(model=model, api_key=api_key, **kwargs)

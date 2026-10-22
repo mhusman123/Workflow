@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import os
 import queue
@@ -32,10 +33,97 @@ MODE_TOOLS = "Tools"
 MODE_RAG = "PDF / RAG"
 MODE_MCP = "MCP"
 MODES = (MODE_GENERAL, MODE_TOOLS, MODE_RAG, MODE_MCP)
+MAX_ATTACHMENT_TEXT = 30000
+MAX_IMAGE_BYTES = 4_000_000
+SUPPORTED_ATTACHMENT_TYPES = (
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "gif",
+    "pdf",
+    "txt",
+    "md",
+    "csv",
+    "json",
+    "py",
+)
 
 
 class ChatState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
+
+
+def build_message_content(
+    prompt: str, attachments: list[dict[str, Any]]
+) -> str | list[dict[str, Any]]:
+    """Build LangChain content blocks for text files and images."""
+    text_parts = [prompt.strip()] if prompt.strip() else []
+    image_blocks: list[dict[str, Any]] = []
+
+    for attachment in attachments:
+        name = str(attachment.get("name", "attachment"))
+        mime_type = str(attachment.get("mime_type") or "application/octet-stream")
+        data = attachment.get("data", b"")
+        if not isinstance(data, bytes):
+            raise TypeError(f"Attachment data for {name} must be bytes.")
+
+        if mime_type.startswith("image/"):
+            if len(data) > MAX_IMAGE_BYTES:
+                try:
+                    from io import BytesIO
+                    from PIL import Image
+
+                    image = Image.open(BytesIO(data)).convert("RGB")
+                    image.thumbnail((1600, 1600))
+                    output = BytesIO()
+                    image.save(output, format="JPEG", quality=85, optimize=True)
+                    data = output.getvalue()
+                    mime_type = "image/jpeg"
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"Could not resize image '{name}': {exc}"
+                    ) from exc
+            encoded = base64.b64encode(data).decode("ascii")
+            image_blocks.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{mime_type};base64,{encoded}",
+                    },
+                }
+            )
+            text_parts.append(f"[Attached image: {name}]")
+            continue
+
+        if mime_type == "application/pdf" or name.lower().endswith(".pdf"):
+            try:
+                from pypdf import PdfReader
+                from io import BytesIO
+
+                pages = PdfReader(BytesIO(data)).pages
+                extracted = "\n\n".join(
+                    page.extract_text() or "" for page in pages
+                ).strip()
+            except Exception as exc:
+                raise RuntimeError(f"Could not read PDF '{name}': {exc}") from exc
+        elif mime_type.startswith("text/") or name.lower().endswith(
+            (".txt", ".md", ".csv", ".json", ".py")
+        ):
+            extracted = data.decode("utf-8", errors="replace")
+        else:
+            raise ValueError(
+                f"Unsupported file type for '{name}'. "
+                "Use an image, PDF, or text-based file."
+            )
+
+        text_parts.append(
+            f"[Attached file: {name}]\n{extracted[:MAX_ATTACHMENT_TEXT]}"
+        )
+
+    if not image_blocks:
+        return "\n\n".join(text_parts)[:MAX_ATTACHMENT_TEXT]
+    return [{"type": "text", "text": "\n\n".join(text_parts)}, *image_blocks]
 
 
 llm = create_groq_llm()
@@ -232,21 +320,39 @@ def rag_tool(query: str, thread_id: Optional[str] = None) -> dict:
 
 def _build_graph(tools: list[BaseTool], rag: bool = False):
     model = llm.bind_tools(tools) if tools else llm
+    vision_model = create_groq_llm(
+        model=os.getenv(
+            "GROQ_VISION_MODEL",
+            "qwen/qwen3.8-27b",
+        ),
+        max_tokens=int(os.getenv("GROQ_MAX_TOKENS", "600")),
+    )
+    if tools:
+        vision_model = vision_model.bind_tools(tools)
 
     def chat_node(state: ChatState, config: dict | None = None):
         messages = state["messages"]
+        system_content = (
+            "Answer concisely and accurately. Prefer a direct answer or a few "
+            "short bullets. Do not repeat the full attached file or question."
+        )
         if rag:
             thread_id = (config or {}).get("configurable", {}).get("thread_id")
-            messages = [
-                SystemMessage(
-                    content=(
-                        "Use rag_tool for questions about the uploaded PDF. "
-                        f"Always pass thread_id={thread_id!r}."
-                    )
-                ),
-                *messages,
-            ]
-        return {"messages": [model.invoke(messages, config=config)]}
+            system_content += (
+                " Use rag_tool for questions about the uploaded PDF and always "
+                f"pass thread_id={thread_id!r}."
+            )
+        messages = [SystemMessage(content=system_content), *messages]
+        has_image = any(
+            isinstance(message.content, list)
+            and any(
+                isinstance(block, dict) and block.get("type") == "image_url"
+                for block in message.content
+            )
+            for message in messages
+        )
+        active_model = vision_model if has_image else model
+        return {"messages": [active_model.invoke(messages, config=config)]}
 
     graph = StateGraph(ChatState)
     graph.add_node("chat_node", chat_node)

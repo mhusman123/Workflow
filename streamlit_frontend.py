@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import re
 import uuid
 
 import streamlit as st
@@ -10,6 +12,8 @@ from langgraph_backend import (
     MODE_MCP,
     MODE_RAG,
     MODES,
+    SUPPORTED_ATTACHMENT_TYPES,
+    build_message_content,
     ensure_thread,
     get_chatbot,
     get_thread_title,
@@ -60,17 +64,17 @@ def title_from_prompt(prompt: str) -> str:
     return " ".join(words[:6]) + ("..." if len(words) > 6 else "")
 
 
-def messages_for_thread(thread_id: str) -> list[dict[str, str]]:
+def messages_for_thread(thread_id: str) -> list[dict[str, object]]:
     state = get_chatbot(MODE_GENERAL).get_state(
         config={"configurable": {"thread_id": thread_id}}
     )
-    result = []
+    result: list[dict[str, object]] = []
     for message in state.values.get("messages", []):
         if isinstance(message, (HumanMessage, AIMessage)) and message.content:
             result.append(
                 {
                     "role": "user" if isinstance(message, HumanMessage) else "assistant",
-                    "content": str(message.content),
+                    "content": message.content,
                 }
             )
     return result
@@ -148,17 +152,73 @@ if not st.session_state["message_history"]:
         unsafe_allow_html=True,
     )
 
+def render_message_content(content: object, role: str = "assistant") -> None:
+    def render_text(text: str) -> None:
+        if role != "user":
+            st.markdown(text)
+            return
+        attachment_pattern = re.compile(
+            r"\[Attached (?:file|image): ([^\]]+)\]"
+        )
+        attachment_names = attachment_pattern.findall(text)
+        visible_text = attachment_pattern.split(text, maxsplit=1)[0].strip()
+        if visible_text:
+            st.markdown(visible_text)
+        for name in attachment_names:
+            st.caption(f"📎 {name}")
+
+    if isinstance(content, list):
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "text":
+                render_text(str(block.get("text", "")))
+            elif block.get("type") == "image_url":
+                image_url = block.get("image_url", {})
+                if isinstance(image_url, dict) and image_url.get("url"):
+                    url = str(image_url["url"])
+                    if "," in url and url.startswith("data:"):
+                        st.image(base64.b64decode(url.split(",", 1)[1]), width=320)
+        return
+    render_text(str(content))
+
+
 for message in st.session_state["message_history"]:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        render_message_content(message["content"], message["role"])
 
-prompt = st.chat_input("Message Cortex...")
-if prompt:
+chat_input = st.chat_input(
+    "Message Cortex...",
+    accept_file="multiple",
+    file_type=list(SUPPORTED_ATTACHMENT_TYPES),
+    max_upload_size=200,
+)
+if chat_input:
+    prompt = chat_input.text
+    attachments = [
+        {
+            "name": uploaded_file.name,
+            "mime_type": uploaded_file.type,
+            "data": uploaded_file.getvalue(),
+        }
+        for uploaded_file in chat_input.files
+    ]
+    if not prompt.strip() and not attachments:
+        st.warning("Add a message, file, or photo before sending.")
+        st.stop()
+    try:
+        message_content = build_message_content(prompt, attachments)
+    except (TypeError, ValueError, RuntimeError) as exc:
+        st.error(str(exc))
+        st.stop()
+    title_text = prompt or str(attachments[0]["name"])
     if get_thread_title(current_thread) == "New chat":
-        rename_thread(current_thread, title_from_prompt(prompt))
-    st.session_state["message_history"].append({"role": "user", "content": prompt})
+        rename_thread(current_thread, title_from_prompt(title_text))
+    st.session_state["message_history"].append(
+        {"role": "user", "content": message_content}
+    )
     with st.chat_message("user"):
-        st.markdown(prompt)
+        render_message_content(message_content, "user")
 
     config = {
         "configurable": {"thread_id": current_thread},
@@ -166,15 +226,23 @@ if prompt:
         "run_name": f"{mode} chat",
     }
     with st.chat_message("assistant"):
-        response = st.write_stream(
-            chunk.content
-            for chunk, _metadata in stream_chat(
-                mode,
-                {"messages": [HumanMessage(content=prompt)]},
-                config=config,
+        try:
+            response = st.write_stream(
+                chunk.content
+                for chunk, _metadata in stream_chat(
+                    mode,
+                    {"messages": [HumanMessage(content=message_content)]},
+                    config=config,
+                )
+                if isinstance(chunk, AIMessage) and chunk.content
             )
-            if isinstance(chunk, AIMessage) and chunk.content
-        )
+        except Exception as exc:
+            st.error(
+                "Cortex could not reach the Groq model. "
+                "Check your API key, internet connection, and model settings."
+            )
+            st.caption(str(exc))
+            st.stop()
     st.session_state["message_history"].append({"role": "assistant", "content": response})
     st.rerun()
 

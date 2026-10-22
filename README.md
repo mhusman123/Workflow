@@ -130,6 +130,18 @@ streamlit run streamlit_frontend.py
 The unified frontend provides persistent SQLite-backed conversations,
 automatic titles, and one workspace selector for General Chat, Tools,
 PDF/RAG, and MCP capabilities. MCP initializes only when MCP mode is used.
+The chat input also accepts images, PDFs, and text-based files. Text and PDF
+content is included in the prompt; images use `GROQ_VISION_MODEL`.
+Attachment text is bounded and responses are instructed to remain concise so
+follow-up questions do not resend an unnecessarily large context.
+Attached file contents are used for answering but are not printed into the
+visible chat transcript; only the attachment name is shown.
+
+Add this optional setting to `.env` to choose the vision-capable Groq model:
+
+```env
+GROQ_VISION_MODEL=qwen/qwen3.8-27b
+```
 
 ---
 
