@@ -1,6 +1,7 @@
 streamlit>=1.56
 python-dotenv>=1.0
 langgraph>=0.2
+langgraph-checkpoint-sqlite>=2.0.11
 langchain-core>=0.2
 langchain-groq>=0.2
 langchain-mcp-adapters>=0.1
