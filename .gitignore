@@ -16,6 +16,8 @@ myenv/
 
 # Streamlit
 .streamlit/
+chatbot.db
+chatbot.db-*
 
 # OS / editor
 .DS_Store

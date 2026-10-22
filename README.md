@@ -15,12 +15,11 @@
 
 ## ✨ Features
 
-- 🧠 **Stateful multi-turn memory** — conversations persist across messages using LangGraph's `InMemorySaver` checkpointer
-- 💬 **Multi-session support** — create, rename, delete, and switch between multiple chat threads
+- 🧠 **Stateful multi-turn memory** — conversations persist across messages using SQLite checkpoints
+- 💬 **Multi-session support** — create and switch between persistent chat threads
 - ⚡ **Streaming responses** — tokens stream in real-time via `chatbot.stream()`
 - 🎨 **ChatGPT-style UI** — dark sidebar, hero landing, suggestion cards, and clean chat feed
-- 🔒 **Fully local** — runs 100% on your machine, zero data sent to the cloud
-- 🖥️ **Responsive** — desktop hover-controls + mobile long-press (650ms) for chat actions
+- 🧩 **Unified workspace** — General Chat, Tools, PDF/RAG, and MCP modes from one interface
 
 ---
 
@@ -108,8 +107,7 @@ User (Browser)
 ```
 Agent-using-LangGraph/
 ├── langgraph_backend.py          # LangGraph graph definition, LLM, checkpointer
-├── streamlit_frontend_thread.py  # Main Streamlit UI (multi-thread chatbot)
-├── streamlit_frontend.py         # (Legacy) single-session frontend
+├── streamlit_frontend.py         # Unified Cortex UI for every capability
 ├── basic_chatbot.ipynb           # Jupyter notebook: basic chatbot exploration
 ├── simple_llm_workflow.ipynb     # Jupyter notebook: simple LLM workflow demo
 ├── requirements.txt              # Python dependencies
@@ -117,6 +115,21 @@ Agent-using-LangGraph/
 ├── .gitignore                    # Git ignore rules
 └── README.md                     # This file
 ```
+
+Groq supplies chat completions but not embeddings. The RAG example therefore
+uses the dependency-free `LocalHashEmbeddings` implementation and does not
+require an OpenAI key. This keeps retrieval local, but it is a lightweight
+lexical embedding rather than a hosted semantic embedding model.
+
+Run the main Cortex application with:
+
+```bash
+streamlit run streamlit_frontend.py
+```
+
+The unified frontend provides persistent SQLite-backed conversations,
+automatic titles, and one workspace selector for General Chat, Tools,
+PDF/RAG, and MCP capabilities. MCP initializes only when MCP mode is used.
 
 ---
 
