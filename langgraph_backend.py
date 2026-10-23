@@ -162,14 +162,6 @@ def ensure_thread(thread_id: str, title: str = "New chat") -> None:
 
 
 def retrieve_all_threads() -> list[str]:
-    checkpoint_thread_ids = set()
-    for checkpoint in checkpointer.list(None):
-        thread_id = checkpoint.config["configurable"].get("thread_id")
-        if thread_id:
-            checkpoint_thread_ids.add(str(thread_id))
-    for thread_id in checkpoint_thread_ids:
-        ensure_thread(thread_id)
-
     rows = conn.execute(
         """
         SELECT thread_id FROM cortex_threads
@@ -387,11 +379,23 @@ def _mcp_loop_worker() -> None:
     _mcp_loop.run_forever()
 
 
-_mcp_loop = asyncio.new_event_loop()
-_mcp_thread = threading.Thread(target=_mcp_loop_worker, daemon=True)
-_mcp_thread.start()
+_mcp_loop: asyncio.AbstractEventLoop | None = None
+_mcp_thread: threading.Thread | None = None
 _mcp_graph: Any = None
 _mcp_future: Any = None
+
+
+def _ensure_mcp_loop() -> asyncio.AbstractEventLoop:
+    global _mcp_loop, _mcp_thread
+    if _mcp_loop is None or _mcp_thread is None:
+        _mcp_loop = asyncio.new_event_loop()
+        _mcp_thread = threading.Thread(
+            target=_mcp_loop_worker,
+            daemon=True,
+            name="mcp-event-loop",
+        )
+        _mcp_thread.start()
+    return _mcp_loop
 
 
 async def _create_mcp_graph():
@@ -424,9 +428,10 @@ def _get_mcp_graph():
     global _mcp_graph, _mcp_future
     if _mcp_graph is not None:
         return _mcp_graph
+    mcp_loop = _ensure_mcp_loop()
     if _mcp_future is None:
         _mcp_future = asyncio.run_coroutine_threadsafe(
-            _create_mcp_graph(), _mcp_loop
+            _create_mcp_graph(), mcp_loop
         )
     try:
         _mcp_graph = _mcp_future.result(timeout=30)
@@ -466,7 +471,7 @@ def stream_chat(
         finally:
             events.put(None)
 
-    asyncio.run_coroutine_threadsafe(run(), _mcp_loop)
+    asyncio.run_coroutine_threadsafe(run(), _ensure_mcp_loop())
     while True:
         item = events.get()
         if item is None:

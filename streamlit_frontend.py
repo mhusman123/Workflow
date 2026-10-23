@@ -91,15 +91,15 @@ def create_thread() -> None:
     select_thread(thread_id)
 
 
+threads = retrieve_all_threads()
 if "thread_id" not in st.session_state:
-    threads = retrieve_all_threads()
     if threads:
         select_thread(threads[0])
     else:
         create_thread()
+        threads = retrieve_all_threads()
 if "message_history" not in st.session_state:
     st.session_state["message_history"] = messages_for_thread(st.session_state["thread_id"])
-threads = retrieve_all_threads()
 current_thread = st.session_state["thread_id"]
 if current_thread not in threads:
     ensure_thread(current_thread)
